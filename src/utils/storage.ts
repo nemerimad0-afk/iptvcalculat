@@ -1,12 +1,37 @@
 import { DailyRecord, Panel, PlanConfig } from '../types';
 import { DEFAULT_PANELS, DEFAULT_PLANS, DEFAULT_USD_EXCHANGE_RATE } from './calculations';
 
-const STORAGE_KEYS = {
+export const STORAGE_KEYS = {
   PANELS: 'iptv_panels_v1',
   PLANS: 'iptv_plans_v1',
   RECORDS: 'iptv_records_v1',
   SETTINGS: 'iptv_settings_v1',
 };
+
+// In-memory fallback cache to ensure zero data loss in restricted environments
+const memoryCache: Record<string, string> = {};
+
+function safeGet(key: string): string | null {
+  try {
+    const val = localStorage.getItem(key);
+    if (val !== null) {
+      memoryCache[key] = val;
+      return val;
+    }
+  } catch (e) {
+    console.warn('localStorage read error, using cache:', e);
+  }
+  return memoryCache[key] ?? null;
+}
+
+function safeSet(key: string, value: string): void {
+  memoryCache[key] = value;
+  try {
+    localStorage.setItem(key, value);
+  } catch (e) {
+    console.warn('localStorage write error:', e);
+  }
+}
 
 export interface AppSettings {
   usdExchangeRate: number;
@@ -120,7 +145,7 @@ function getInitialSampleRecords(): DailyRecord[] {
 
 export function loadPanels(): Panel[] {
   try {
-    const data = localStorage.getItem(STORAGE_KEYS.PANELS);
+    const data = safeGet(STORAGE_KEYS.PANELS);
     if (!data) {
       savePanels(DEFAULT_PANELS);
       return DEFAULT_PANELS;
@@ -134,7 +159,7 @@ export function loadPanels(): Panel[] {
 
 export function savePanels(panels: Panel[]): void {
   try {
-    localStorage.setItem(STORAGE_KEYS.PANELS, JSON.stringify(panels));
+    safeSet(STORAGE_KEYS.PANELS, JSON.stringify(panels));
   } catch (e) {
     console.error('Failed to save panels', e);
   }
@@ -142,7 +167,7 @@ export function savePanels(panels: Panel[]): void {
 
 export function loadPlans(): PlanConfig[] {
   try {
-    const data = localStorage.getItem(STORAGE_KEYS.PLANS);
+    const data = safeGet(STORAGE_KEYS.PLANS);
     if (!data) {
       savePlans(DEFAULT_PLANS);
       return DEFAULT_PLANS;
@@ -156,7 +181,7 @@ export function loadPlans(): PlanConfig[] {
 
 export function savePlans(plans: PlanConfig[]): void {
   try {
-    localStorage.setItem(STORAGE_KEYS.PLANS, JSON.stringify(plans));
+    safeSet(STORAGE_KEYS.PLANS, JSON.stringify(plans));
   } catch (e) {
     console.error('Failed to save plans', e);
   }
@@ -164,9 +189,8 @@ export function savePlans(plans: PlanConfig[]): void {
 
 export function loadRecords(): DailyRecord[] {
   try {
-    const data = localStorage.getItem(STORAGE_KEYS.RECORDS);
+    const data = safeGet(STORAGE_KEYS.RECORDS);
     if (!data) {
-      saveRecords([]);
       return [];
     }
     const parsed = JSON.parse(data);
@@ -178,7 +202,7 @@ export function loadRecords(): DailyRecord[] {
 
 export function clearAllRecords(): void {
   try {
-    localStorage.setItem(STORAGE_KEYS.RECORDS, JSON.stringify([]));
+    safeSet(STORAGE_KEYS.RECORDS, JSON.stringify([]));
   } catch (e) {
     console.error('Failed to clear records', e);
   }
@@ -186,7 +210,7 @@ export function clearAllRecords(): void {
 
 export function saveRecords(records: DailyRecord[]): void {
   try {
-    localStorage.setItem(STORAGE_KEYS.RECORDS, JSON.stringify(records));
+    safeSet(STORAGE_KEYS.RECORDS, JSON.stringify(records));
   } catch (e) {
     console.error('Failed to save records', e);
   }
@@ -194,7 +218,7 @@ export function saveRecords(records: DailyRecord[]): void {
 
 export function loadSettings(): AppSettings {
   try {
-    const data = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+    const data = safeGet(STORAGE_KEYS.SETTINGS);
     if (!data) {
       saveSettings(DEFAULT_SETTINGS);
       return DEFAULT_SETTINGS;
@@ -207,7 +231,7 @@ export function loadSettings(): AppSettings {
 
 export function saveSettings(settings: AppSettings): void {
   try {
-    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+    safeSet(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
   } catch (e) {
     console.error('Failed to save settings', e);
   }

@@ -37,11 +37,11 @@ import {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'daily' | 'history' | 'panels' | 'plans' | 'simulator' | 'settings'>('daily');
-  const [panels, setPanels] = useState<Panel[]>([]);
-  const [plans, setPlans] = useState<PlanConfig[]>([]);
-  const [records, setRecords] = useState<DailyRecord[]>([]);
-  const [settings, setSettings] = useState<AppSettings>(loadSettings());
-  const [selectedDateForEntry, setSelectedDateForEntry] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [panels, setPanels] = useState<Panel[]>(() => loadPanels());
+  const [plans, setPlans] = useState<PlanConfig[]>(() => loadPlans());
+  const [records, setRecords] = useState<DailyRecord[]>(() => loadRecords());
+  const [settings, setSettings] = useState<AppSettings>(() => loadSettings());
+  const [selectedDateForEntry, setSelectedDateForEntry] = useState<string>(() => new Date().toISOString().split('T')[0]);
   
   // Buy Panel Modal state
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
@@ -49,18 +49,25 @@ export default function App() {
   // Mobile extra menu sheet
   const [showMobileMoreMenu, setShowMobileMoreMenu] = useState(false);
 
-  // Load data on mount and zero out records as requested
+  // Reload all persisted data from storage
   const reloadData = useCallback(() => {
     setPanels(loadPanels());
     setPlans(loadPlans());
     setSettings(loadSettings());
+    setRecords(loadRecords());
   }, []);
 
   useEffect(() => {
-    // Clear and zero out all past records
-    saveRecords([]);
-    setRecords([]);
+    // Keep local state in sync on mount
     reloadData();
+
+    // Sync across tabs if user opens app in multiple tabs
+    const handleStorageChange = () => {
+      reloadData();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, [reloadData]);
 
   // Handlers
